@@ -41,15 +41,13 @@ class RSelection {
     getKeys() {
         let keys = {};
         this.nodes.forEach((node)=>{
-            var okeys = Object.keys(node);
-            okeys.forEach((key)=>{
+            Object.keys(node).forEach((key)=>{
                 var val = node[key];
                 if(typeof val === 'function') return;
                 if(key === 'type') return;
                 keys[key] = val;
             });
-        })
-        console.log("final keys",keys);
+        });
         return Object.keys(keys);
     }
 
@@ -85,7 +83,6 @@ class SVGDoc {
     }
 
     updateProperty(node, name, value) {
-        console.log('document updating',node,name,value);
         node[name] = value;
         if(this.cb) this.cb(this);
     }
@@ -128,7 +125,6 @@ class App extends Component {
         doc.updateProperty(rect2, 'x', 50);
         doc.updateProperty(rect2, 'y', 50);
         doc.updateProperty(rect2, 'fill', 'red');
-        // rect2.x = 50;
         doc.addChild(rect2);
 
 
@@ -201,7 +197,7 @@ class App extends Component {
 
     renderMainView(doc) {
         const style = {
-            border: '1px solid red'
+            border: '1px solid #888'
         };
         return <VBox grow style={style}>
             <svg version="1.1" baseProfile="tiny" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
@@ -226,9 +222,15 @@ class App extends Component {
                 return <rect key={key}
                              x={node.x}
                              y={node.y}
-                             width={node.width} height={node.height} fill={node.fill}/>
+                             width={node.width} height={node.height} fill={node.fill}
+                             onClick={()=>this.nodeClicked(node)}
+                />
             }
         }
+    }
+
+    nodeClicked(e) {
+        this.state.selection.replace(e);
     }
 }
 
