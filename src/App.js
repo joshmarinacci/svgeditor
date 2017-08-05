@@ -2,11 +2,68 @@ import React, {Component} from 'react';
 import './App.css';
 import {VBox, HBox, Spacer} from "appy-comps";
 
+class RSelection {
+    constructor(doc) {
+        this.doc = doc;
+        this.nodes = [];
+        this.cbs = [];
+    }
+    fireChange() {
+        this.cbs.forEach((cb)=>cb(this));
+    }
+
+    onChange(cb) {
+        this.cbs.push(cb);
+    }
+    isNotEmpty() {
+        return this.nodes.length > 0;
+    }
+    add(node) {
+        this.nodes.push(node);
+        this.fireChange();
+    }
+    replace(node) {
+        this.nodes = [node];
+        this.fireChange();
+    }
+    clear() {
+        this.nodes = [];
+        this.fireChange();
+    }
+    contains(node) {
+        return this.nodes.indexOf(node) >= 0;
+    }
+    updateProperty(name,value) {
+        this.nodes.forEach((node,i)=>{
+            this.doc.updateProperty(node,name,value);
+        });
+    }
+    getKeys() {
+        let keys = {};
+        this.nodes.forEach((node)=>{
+            var okeys = Object.keys(node);
+            okeys.forEach((key)=>{
+                var val = node[key];
+                if(typeof val === 'function') return;
+                if(key === 'type') return;
+                keys[key] = val;
+            });
+        })
+        console.log("final keys",keys);
+        return Object.keys(keys);
+    }
+
+    getValue(key) {
+        if(this.isNotEmpty()) return this.nodes[0][key];
+        return "";
+    }
+
+}
 class SVGDoc {
     constructor() {
         this.children = [];
         this.type = "doc"
-        this.on = (cb) => {
+        this.onChange = (cb) => {
             this.cb = cb;
         }
     }
@@ -44,16 +101,14 @@ class SVGDoc {
 
 class PropsSheet extends Component {
     updateProperty(name,value) {
-        this.props.doc.updateProperty(this.props.selection,name,value);
+        this.props.selection.updateProperty(name,value);
     }
     render() {
-        const obj = this.props.selection;
-        const props = Object.keys(obj)
-            .filter((name) => typeof obj[name] !== 'function')
-            .map((name, i) => {
-                return <HBox key={name}>
-                    <label>{name}</label>
-                    <input type="text" value={obj[name]} onChange={(e)=>this.updateProperty(name,e.target.value)}/>
+        const props = this.props.selection.getKeys().map((key, i) => {
+            const val = this.props.selection.getValue(key);
+            return <HBox key={key}>
+                <label>{key}</label>
+                <input type="text" value={val} onChange={(e) => this.updateProperty(key, e.target.value)}/>
                 </HBox>
             });
         return <VBox grow className="propsheet">{props}</VBox>
@@ -66,6 +121,7 @@ class App extends Component {
         super(props);
 
         const doc = new SVGDoc();
+        const selection = new RSelection(doc);
         const rect = doc.makeRect();
         doc.addChild(rect);
         const rect2 = doc.makeRect();
@@ -74,15 +130,17 @@ class App extends Component {
         doc.updateProperty(rect2, 'fill', 'red');
         // rect2.x = 50;
         doc.addChild(rect2);
-        doc.on(()=>{
-            console.log("changed");
-            this.setState({doc:doc})
-        })
+
 
         this.state = {
             doc: doc,
-            selectedSingleNode: rect
-        }
+            selection:selection
+        };
+
+        selection.add(rect);
+
+        doc.onChange(()=>this.setState({doc:doc}));
+        selection.onChange((sel)=>{this.setState({selection:sel})})
     }
 
     render() {
@@ -125,16 +183,20 @@ class App extends Component {
         </VBox>
     }
 
+    selectNode(node) {
+        this.state.selection.replace(node);
+    }
+
     renderTreeNode(node, key) {
         let ch = '';
         if (node.hasChildren()) {
             ch = <ul>{node.getChildren().map((ch, i) => this.renderTreeNode(ch, i))}</ul>
         }
         let clss = "";
-        if (this.state.selectedSingleNode === node) {
+        if (this.state.selection.contains(node)) {
             clss = 'selected-tree-node';
         }
-        return <li key={key} className={clss}><span>{node.type}</span>{ch}</li>
+        return <li key={key} className={clss}><span onClick={()=>this.selectNode(node)}>{node.type}</span>{ch}</li>
     }
 
     renderMainView(doc) {
@@ -150,7 +212,7 @@ class App extends Component {
 
     renderPropSheetView() {
         return <VBox>
-            <PropsSheet selection={this.state.selectedSingleNode} doc={this.state.doc}/>
+            <PropsSheet selection={this.state.selection} doc={this.state.doc}/>
         </VBox>
     }
 
