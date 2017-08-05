@@ -6,6 +6,9 @@ class SVGDoc {
     constructor() {
         this.children = [];
         this.type = "doc"
+        this.on = (cb) => {
+            this.cb = cb;
+        }
     }
 
     hasChildren() {
@@ -15,17 +18,19 @@ class SVGDoc {
     makeRect() {
         return {
             type: 'rect',
-            x: 0,
-            y: 0,
-            width: 50,
-            height: 50,
+            x: '0',
+            y: '0',
+            width: '50',
+            height: '50',
             fill: 'blue',
             hasChildren: () => false
         }
     }
 
     updateProperty(node, name, value) {
+        console.log('document updating',node,name,value);
         node[name] = value;
+        if(this.cb) this.cb(this);
     }
 
     getChildren() {
@@ -34,6 +39,24 @@ class SVGDoc {
 
     addChild(node) {
         this.children.push(node);
+    }
+}
+
+class PropsSheet extends Component {
+    updateProperty(name,value) {
+        this.props.doc.updateProperty(this.props.selection,name,value);
+    }
+    render() {
+        const obj = this.props.selection;
+        const props = Object.keys(obj)
+            .filter((name) => typeof obj[name] !== 'function')
+            .map((name, i) => {
+                return <HBox key={name}>
+                    <label>{name}</label>
+                    <input type="text" value={obj[name]} onChange={(e)=>this.updateProperty(name,e.target.value)}/>
+                </HBox>
+            });
+        return <VBox grow className="propsheet">{props}</VBox>
     }
 }
 
@@ -51,10 +74,14 @@ class App extends Component {
         doc.updateProperty(rect2, 'fill', 'red');
         // rect2.x = 50;
         doc.addChild(rect2);
+        doc.on(()=>{
+            console.log("changed");
+            this.setState({doc:doc})
+        })
 
         this.state = {
             doc: doc,
-            selectedSingleNode:rect
+            selectedSingleNode: rect
         }
     }
 
@@ -91,20 +118,20 @@ class App extends Component {
 
     renderTreeView(node) {
         const style = {
-            minWidth:'200px',
+            minWidth: '200px',
         };
         return <VBox style={style} className="tree">
-            <ul>{this.renderTreeNode(node,'doc')}</ul>
+            <ul>{this.renderTreeNode(node, 'doc')}</ul>
         </VBox>
     }
 
-    renderTreeNode(node,key) {
+    renderTreeNode(node, key) {
         let ch = '';
-        if(node.hasChildren()) {
-            ch = <ul>{node.getChildren().map((ch,i)=>this.renderTreeNode(ch,i))}</ul>
+        if (node.hasChildren()) {
+            ch = <ul>{node.getChildren().map((ch, i) => this.renderTreeNode(ch, i))}</ul>
         }
         let clss = "";
-        if(this.state.selectedSingleNode === node) {
+        if (this.state.selectedSingleNode === node) {
             clss = 'selected-tree-node';
         }
         return <li key={key} className={clss}><span>{node.type}</span>{ch}</li>
@@ -123,7 +150,7 @@ class App extends Component {
 
     renderPropSheetView() {
         return <VBox>
-            props sheet here
+            <PropsSheet selection={this.state.selectedSingleNode} doc={this.state.doc}/>
         </VBox>
     }
 

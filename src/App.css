@@ -7,11 +7,13 @@
 
 button, label {
     padding: 0.5em;
+    margin: 0.25em;
 }
 
 button {
     background-color: #bbb;
     border: 1px solid #888;
+    border-radius: 3px;
 }
 
 .tree ul {
@@ -25,4 +27,17 @@ button {
 }
 .selected-tree-node {
     background-color: #cccccc;
+}
+
+.propsheet {
+    background-color: #ddd;
+    border: 1px solid gray;
+}
+
+.propsheet input {
+    border: 1px solid blue;
+}
+.propsheet label {
+    min-width: 6em;
+    text-align: right;
 }
