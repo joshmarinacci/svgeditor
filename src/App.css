@@ -1,0 +1,28 @@
+
+.statusbar {
+  border: 1px solid #ccc;
+  background-color: #ddd;
+  padding: 0.25em;
+}
+
+button, label {
+    padding: 0.5em;
+}
+
+button {
+    background-color: #bbb;
+    border: 1px solid #888;
+}
+
+.tree ul {
+    margin:0;
+    padding:0;
+    padding-left:1em;
+}
+.tree li {
+    list-style: none;
+    padding: 0.5em;
+}
+.selected-tree-node {
+    background-color: #cccccc;
+}
