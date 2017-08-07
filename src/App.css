@@ -1,8 +1,8 @@
 
 .statusbar {
-  border: 1px solid #ccc;
-  background-color: #ddd;
-  padding: 0.25em;
+    border: 1px solid #ccc;
+    background-color: #ddd;
+    padding: 0.25em;
 }
 
 button, label {
@@ -17,14 +17,16 @@ button {
 }
 
 .tree ul {
-    margin:0;
-    padding:0;
-    padding-left:1em;
+    margin: 0;
+    padding: 0;
+    padding-left: 1em;
 }
+
 .tree li {
     list-style: none;
     padding: 0.5em;
 }
+
 .selected-tree-node {
     background-color: #cccccc;
 }
@@ -37,6 +39,7 @@ button {
 .propsheet input {
     border: 1px solid blue;
 }
+
 .propsheet label {
     min-width: 6em;
     text-align: right;

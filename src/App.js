@@ -1,62 +1,10 @@
 import React, {Component} from 'react';
 import './App.css';
 import {VBox, HBox, Spacer} from "appy-comps";
+import Point from "./Point";
+import RSelection from "./RSelection";
+import PropsSheet from "./PropsSheet"
 
-class RSelection {
-    constructor(doc) {
-        this.doc = doc;
-        this.nodes = [];
-        this.cbs = [];
-    }
-    fireChange() {
-        this.cbs.forEach((cb)=>cb(this));
-    }
-
-    onChange(cb) {
-        this.cbs.push(cb);
-    }
-    isNotEmpty() {
-        return this.nodes.length > 0;
-    }
-    add(node) {
-        this.nodes.push(node);
-        this.fireChange();
-    }
-    replace(node) {
-        this.nodes = [node];
-        this.fireChange();
-    }
-    clear() {
-        this.nodes = [];
-        this.fireChange();
-    }
-    contains(node) {
-        return this.nodes.indexOf(node) >= 0;
-    }
-    updateProperty(name,value) {
-        this.nodes.forEach((node,i)=>{
-            this.doc.updateProperty(node,name,value);
-        });
-    }
-    getKeys() {
-        let keys = {};
-        this.nodes.forEach((node)=>{
-            Object.keys(node).forEach((key)=>{
-                var val = node[key];
-                if(typeof val === 'function') return;
-                if(key === 'type') return;
-                keys[key] = val;
-            });
-        });
-        return Object.keys(keys);
-    }
-
-    getValue(key) {
-        if(this.isNotEmpty()) return this.nodes[0][key];
-        return "";
-    }
-
-}
 class SVGDoc {
     constructor() {
         this.children = [];
@@ -96,22 +44,6 @@ class SVGDoc {
     }
 }
 
-class PropsSheet extends Component {
-    updateProperty(name,value) {
-        this.props.selection.updateProperty(name,value);
-    }
-    render() {
-        const props = this.props.selection.getKeys().map((key, i) => {
-            const val = this.props.selection.getValue(key);
-            return <HBox key={key}>
-                <label>{key}</label>
-                <input type="text" value={val} onChange={(e) => this.updateProperty(key, e.target.value)}/>
-                </HBox>
-            });
-        return <VBox grow className="propsheet">{props}</VBox>
-    }
-}
-
 class App extends Component {
 
     constructor(props) {
@@ -130,7 +62,9 @@ class App extends Component {
 
         this.state = {
             doc: doc,
-            selection:selection
+            selection:selection,
+            dragging:false,
+            dragXY:{},
         };
 
         selection.add(rect);
@@ -200,7 +134,7 @@ class App extends Component {
             border: '1px solid #888'
         };
         return <VBox grow style={style}>
-            <svg version="1.1" baseProfile="tiny" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+            <svg version="1.1" baseProfile="tiny" width="400" height="400" xmlns="http://www.w3.org/2000/svg">
                 {this.renderSVGChildren(doc)};
             </svg>
         </VBox>
@@ -219,11 +153,17 @@ class App extends Component {
             })
         } else {
             if (node.type === 'rect') {
+                const xy = {x:node.x, y:node.y}
+                if(this.state.dragging && this.state.selection.contains(node)) {
+                    xy.x = this.state.nodeXY.x + this.state.diffXY.x;
+                    xy.y = this.state.nodeXY.y + this.state.diffXY.y;
+                }
                 return <rect key={key}
-                             x={node.x}
-                             y={node.y}
+                             x={xy.x}
+                             y={xy.y}
                              width={node.width} height={node.height} fill={node.fill}
                              onClick={()=>this.nodeClicked(node)}
+                             onMouseDown={(e)=>this.nodePressed(e,node)}
                 />
             }
         }
@@ -231,6 +171,40 @@ class App extends Component {
 
     nodeClicked(e) {
         this.state.selection.replace(e);
+    }
+    nodePressed(e,node) {
+        if(!this.state.selection.contains(node)) return;
+        const screen = new Point(e.screenX, e.screenY);
+        this.setState({
+            dragging:true,
+            nodeXY: new Point(node.x,node.y),
+            startXY: screen,
+            diffXY: new Point(0,0),
+        });
+
+        this.mouse_move_listener = (e)=>{
+            const screen = new Point(e.screenX, e.screenY);
+            this.setState({
+                diffXY: screen.minus(this.state.startXY),
+            })
+        };
+        this.mouse_up_listener = (e) => {
+            document.removeEventListener('mousemove',this.mouse_move_listener);
+            document.removeEventListener('mouseup',this.mouse_up_listener);
+            this.mouse_move_listener = null;
+            this.mouse_up_listener = null;
+
+            const final = this.state.nodeXY.plus(this.state.diffXY);
+            this.state.doc.updateProperty(node,'x',final.x);//this.state.nodeXY.x+this.state.diffXY.x);
+            this.state.doc.updateProperty(node,'y',final.y);//this.state.nodeXY.y+this.state.diffXY.y);
+            this.setState({
+                dragging:false,
+                nodeXY:{},
+            });
+        };
+
+        document.addEventListener('mousemove',this.mouse_move_listener);
+        document.addEventListener('mouseup', this.mouse_up_listener);
     }
 }
 
