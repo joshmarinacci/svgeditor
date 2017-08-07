@@ -41,6 +41,9 @@ export default class RSelection {
             this.doc.updateProperty(node, name, value);
         });
     }
+    addProperty(name, value) {
+        this.nodes.forEach((node) => this.doc.addProperty(node, name, value))
+    }
 
     getKeys() {
         let keys = {};

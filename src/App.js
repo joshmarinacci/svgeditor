@@ -32,18 +32,23 @@ class SVGDoc {
 
     makeCircle() {
         return {
-            type:'circle',
-            cx:'0',
-            cy:'0',
-            radius:'20',
-            fill:'red',
+            type: 'circle',
+            cx: '0',
+            cy: '0',
+            radius: '20',
+            fill: 'red',
             hasChildren: () => false
         }
     }
 
     updateProperty(node, name, value) {
         node[name] = value;
-        if(this.cb) this.cb(this);
+        if (this.cb) this.cb(this);
+    }
+
+    addProperty(node, name, value) {
+        node[name] = "" + (parseFloat(node[name]) + parseFloat(value));
+        if (this.cb) this.cb(this);
     }
 
     getChildren() {
@@ -52,7 +57,7 @@ class SVGDoc {
 
     addChild(node) {
         this.children.push(node);
-        if(this.cb) this.cb(this);
+        if (this.cb) this.cb(this);
     }
 }
 
@@ -74,27 +79,22 @@ class App extends Component {
 
         this.state = {
             doc: doc,
-            selection:selection,
-            dragging:false,
-            dragXY:{},
+            selection: selection,
+            dragging: false,
+            dragXY: {},
         };
 
         selection.add(rect);
 
-        doc.onChange(()=>this.setState({doc:doc}));
-        selection.onChange((sel)=>{this.setState({selection:sel})})
+        doc.onChange(() => this.setState({doc: doc}));
 
-        this.insertNewRect = () => {
-            const node = doc.makeRect();
-            doc.updateProperty(node,'fill','green');
-            doc.addChild(node);
-        }
+        selection.onChange(sel => this.setState({selection: sel}));
 
-        this.insertNewCircle = () => {
-            const node = doc.makeCircle();
-            // doc.updateProperty(node,'fill','purple');
-            doc.addChild(node);
-        }
+        this.insertNewRect = () => doc.addChild(doc.makeRect());
+
+        this.insertNewCircle = () => doc.addChild(doc.makeCircle());
+
+        this.clearSelection = () => this.state.selection.clear();
     }
 
     render() {
@@ -150,7 +150,7 @@ class App extends Component {
         if (this.state.selection.contains(node)) {
             clss = 'selected-tree-node';
         }
-        return <li key={key} className={clss}><span onClick={()=>this.selectNode(node)}>{node.type}</span>{ch}</li>
+        return <li key={key} className={clss}><span onClick={() => this.selectNode(node)}>{node.type}</span>{ch}</li>
     }
 
     renderMainView(doc) {
@@ -158,7 +158,9 @@ class App extends Component {
             border: '1px solid #888'
         };
         return <VBox grow style={style}>
-            <svg version="1.1" baseProfile="tiny" width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+            <svg version="1.1" baseProfile="tiny" width="400" height="400" xmlns="http://www.w3.org/2000/svg"
+                 onMouseDown={this.clearSelection}
+            >
                 {this.renderSVGChildren(doc)};
             </svg>
         </VBox>
@@ -177,20 +179,18 @@ class App extends Component {
             })
         } else {
             if (node.type === 'rect') {
-                const xy = {x:node.x, y:node.y}
-                if(this.state.dragging && this.state.selection.contains(node)) {
-                    xy.x = this.state.nodeXY.x + this.state.diffXY.x;
-                    xy.y = this.state.nodeXY.y + this.state.diffXY.y;
+                let xy = new Point(node.x, node.y);
+                if (this.state.dragging && this.state.selection.contains(node)) {
+                    xy = xy.plus(this.state.diffXY);
                 }
                 return <rect key={key}
                              x={xy.x}
                              y={xy.y}
                              width={node.width} height={node.height} fill={node.fill}
-                             onClick={()=>this.nodeClicked(node)}
-                             onMouseDown={(e)=>this.nodePressed(e,node)}
+                             onMouseDown={(e) => this.nodePressed(e, node)}
                 />
             }
-            if(node.type === 'circle') {
+            if (node.type === 'circle') {
                 return <circle key={key}
                                cx={node.cx}
                                cy={node.cy}
@@ -201,41 +201,47 @@ class App extends Component {
         }
     }
 
-    nodeClicked(e) {
-        this.state.selection.replace(e);
-    }
-    nodePressed(e,node) {
-        if(!this.state.selection.contains(node)) return;
+    nodePressed(e, node) {
+        if (!this.state.selection.contains(node)) {
+            if (e.shiftKey) {
+                this.state.selection.add(node)
+            } else {
+                this.state.selection.replace(node);
+            }
+        }
+
+        if (!this.state.selection.contains(node)) return;
+        e.preventDefault();
+        e.stopPropagation();
         const screen = new Point(e.screenX, e.screenY);
         this.setState({
-            dragging:true,
-            nodeXY: new Point(node.x,node.y),
+            dragging: true,
             startXY: screen,
-            diffXY: new Point(0,0),
+            diffXY: new Point(0, 0),
         });
 
-        this.mouse_move_listener = (e)=>{
+        this.mouse_move_listener = (e) => {
             const screen = new Point(e.screenX, e.screenY);
             this.setState({
                 diffXY: screen.minus(this.state.startXY),
             })
         };
         this.mouse_up_listener = (e) => {
-            document.removeEventListener('mousemove',this.mouse_move_listener);
-            document.removeEventListener('mouseup',this.mouse_up_listener);
+            e.preventDefault();
+            e.stopPropagation();
+            document.removeEventListener('mousemove', this.mouse_move_listener);
+            document.removeEventListener('mouseup', this.mouse_up_listener);
             this.mouse_move_listener = null;
             this.mouse_up_listener = null;
 
-            const final = this.state.nodeXY.plus(this.state.diffXY);
-            this.state.doc.updateProperty(node,'x',final.x);//this.state.nodeXY.x+this.state.diffXY.x);
-            this.state.doc.updateProperty(node,'y',final.y);//this.state.nodeXY.y+this.state.diffXY.y);
+            this.state.selection.addProperty('x', this.state.diffXY.x);
+            this.state.selection.addProperty('y', this.state.diffXY.y);
             this.setState({
-                dragging:false,
-                nodeXY:{},
+                dragging: false,
             });
         };
 
-        document.addEventListener('mousemove',this.mouse_move_listener);
+        document.addEventListener('mousemove', this.mouse_move_listener);
         document.addEventListener('mouseup', this.mouse_up_listener);
     }
 }
