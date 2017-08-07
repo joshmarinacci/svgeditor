@@ -190,11 +190,16 @@ class App extends Component {
                 />
             }
             if (node.type === 'circle') {
+                let xy = new Point(node.cx, node.cy);
+                if(this.state.action && this.state.selection.contains(node)) {
+                    xy = this.state.action.transform(node);
+                }
                 return <circle key={key}
-                               cx={node.cx}
-                               cy={node.cy}
+                               cx={xy.x}
+                               cy={xy.y}
                                r={node.radius}
                                fill={node.fill}
+                               onMouseDown={(e) => this.nodePressed(e,node)}
                 />
             }
         }
@@ -247,6 +252,9 @@ class DragAction {
     //called to transform rendering nodes during the drag
     transform(node) {
         let xy = new Point(node.x, node.y);
+        if(node.type === 'circle') {
+            xy = new Point(node.cx, node.cy);
+        }
         return xy.plus(this.diffXY);
     }
 }

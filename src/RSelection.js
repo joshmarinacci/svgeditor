@@ -42,7 +42,13 @@ export default class RSelection {
         });
     }
     addProperty(name, value) {
-        this.nodes.forEach((node) => this.doc.addProperty(node, name, value))
+        this.nodes.forEach((node) => this.doc.addProperty(node, this.getRealPropName(node,name), value))
+    }
+
+    getRealPropName(node,name) {
+        if(node.type === 'circle' && name === 'x') return 'cx';
+        if(node.type === 'circle' && name === 'y') return 'cy';
+        return name;
     }
 
     getKeys() {
