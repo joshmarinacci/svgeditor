@@ -30,6 +30,17 @@ class SVGDoc {
         }
     }
 
+    makeCircle() {
+        return {
+            type:'circle',
+            cx:'0',
+            cy:'0',
+            radius:'20',
+            fill:'red',
+            hasChildren: () => false
+        }
+    }
+
     updateProperty(node, name, value) {
         node[name] = value;
         if(this.cb) this.cb(this);
@@ -74,9 +85,15 @@ class App extends Component {
         selection.onChange((sel)=>{this.setState({selection:sel})})
 
         this.insertNewRect = () => {
-            const rect = doc.makeRect();
-            doc.updateProperty(rect,'fill','green');
-            doc.addChild(rect);
+            const node = doc.makeRect();
+            doc.updateProperty(node,'fill','green');
+            doc.addChild(node);
+        }
+
+        this.insertNewCircle = () => {
+            const node = doc.makeCircle();
+            // doc.updateProperty(node,'fill','purple');
+            doc.addChild(node);
         }
     }
 
@@ -95,7 +112,7 @@ class App extends Component {
     renderToolbar() {
         return <HBox className="statusbar">
             <button onClick={this.insertNewRect}>new rect</button>
-            <button>new circle</button>
+            <button onClick={this.insertNewCircle}>new circle</button>
             <button>delete selection</button>
         </HBox>
     }
@@ -171,6 +188,14 @@ class App extends Component {
                              width={node.width} height={node.height} fill={node.fill}
                              onClick={()=>this.nodeClicked(node)}
                              onMouseDown={(e)=>this.nodePressed(e,node)}
+                />
+            }
+            if(node.type === 'circle') {
+                return <circle key={key}
+                               cx={node.cx}
+                               cy={node.cy}
+                               r={node.radius}
+                               fill={node.fill}
                 />
             }
         }
