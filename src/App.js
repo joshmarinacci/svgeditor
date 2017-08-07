@@ -80,8 +80,7 @@ class App extends Component {
         this.state = {
             doc: doc,
             selection: selection,
-            dragging: false,
-            dragXY: {},
+            action:null
         };
 
         selection.add(rect);
@@ -180,8 +179,8 @@ class App extends Component {
         } else {
             if (node.type === 'rect') {
                 let xy = new Point(node.x, node.y);
-                if (this.state.dragging && this.state.selection.contains(node)) {
-                    xy = xy.plus(this.state.diffXY);
+                if(this.state.action && this.state.selection.contains(node)) {
+                    xy = this.state.action.transform(node);
                 }
                 return <rect key={key}
                              x={xy.x}
@@ -209,41 +208,45 @@ class App extends Component {
                 this.state.selection.replace(node);
             }
         }
-
         if (!this.state.selection.contains(node)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const screen = new Point(e.screenX, e.screenY);
-        this.setState({
-            dragging: true,
-            startXY: screen,
-            diffXY: new Point(0, 0),
-        });
+        e.stopPropagation(); //don't let the background get this event
+        this.setState({action:new DragAction(this,this.state.selection,e)});
+    }
+}
+
+export default App;
+
+class DragAction {
+    constructor(app,selection,e) {
+        this.selection = selection;
+        this.startXY = new Point(e.screenX, e.screenY);
+        this.diffXY = new Point(0,0);
 
         this.mouse_move_listener = (e) => {
-            const screen = new Point(e.screenX, e.screenY);
-            this.setState({
-                diffXY: screen.minus(this.state.startXY),
-            })
+            this.diffXY = new Point(e.screenX, e.screenY).minus(this.startXY);
+            app.setState({diffXY:this.diffXY});
         };
         this.mouse_up_listener = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
             document.removeEventListener('mousemove', this.mouse_move_listener);
             document.removeEventListener('mouseup', this.mouse_up_listener);
             this.mouse_move_listener = null;
             this.mouse_up_listener = null;
 
-            this.state.selection.addProperty('x', this.state.diffXY.x);
-            this.state.selection.addProperty('y', this.state.diffXY.y);
-            this.setState({
-                dragging: false,
-            });
+            //update the nodes for real
+            this.diffXY = new Point(e.screenX, e.screenY).minus(this.startXY);
+            this.selection.addProperty('x', this.diffXY.x);
+            this.selection.addProperty('y', this.diffXY.y);
+            //remove this action from the app
+            app.setState({action:null})
         };
 
         document.addEventListener('mousemove', this.mouse_move_listener);
         document.addEventListener('mouseup', this.mouse_up_listener);
     }
-}
 
-export default App;
+    //called to transform rendering nodes during the drag
+    transform(node) {
+        let xy = new Point(node.x, node.y);
+        return xy.plus(this.diffXY);
+    }
+}
