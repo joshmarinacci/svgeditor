@@ -41,6 +41,7 @@ class SVGDoc {
 
     addChild(node) {
         this.children.push(node);
+        if(this.cb) this.cb(this);
     }
 }
 
@@ -71,6 +72,12 @@ class App extends Component {
 
         doc.onChange(()=>this.setState({doc:doc}));
         selection.onChange((sel)=>{this.setState({selection:sel})})
+
+        this.insertNewRect = () => {
+            const rect = doc.makeRect();
+            doc.updateProperty(rect,'fill','green');
+            doc.addChild(rect);
+        }
     }
 
     render() {
@@ -87,7 +94,7 @@ class App extends Component {
 
     renderToolbar() {
         return <HBox className="statusbar">
-            <button>new rect</button>
+            <button onClick={this.insertNewRect}>new rect</button>
             <button>new circle</button>
             <button>delete selection</button>
         </HBox>
